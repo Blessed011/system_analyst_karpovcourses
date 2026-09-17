@@ -1,2 +1,2 @@
-# system_analyst_karpovcourses
-Projects made during the System Analyst course on the karpov.courses platform.
+# Проекты курса "Системный аналитик"
+#### Проекты, сделанные в ходе прохождения курса **"Системный аналитик"** на платформе *karpov.courses*.
