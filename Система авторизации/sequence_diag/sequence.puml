@@ -1,0 +1,95 @@
+@startuml
+
+title Регистрация пользователя по номеру телефона
+
+actor User
+participant "Registration UI" as UI
+participant "API Gateway" as Gateway
+participant "Registration Service" as Reg
+participant "Identity Provider (IdP)" as IdP
+participant "Verification Service" as Verify
+participant "Token Service" as Token
+database "User DB" as UserDB
+
+== Step 1: Ввод номера телефона ==
+User -> UI : Ввод номера телефона
+activate UI
+UI -> Gateway : POST /register/start {phone}
+activate Gateway
+Gateway -> Reg : Инициация регистрации
+activate Reg
+
+== Step 2: Проверка уникальности ==
+Reg -> IdP : Проверка существования номера
+activate IdP
+IdP -> UserDB : SELECT user WHERE phone = ?
+activate UserDB
+UserDB --> IdP : Результат поиска
+deactivate UserDB
+IdP --> Reg : Результат проверки
+deactivate IdP
+
+alt Телефон не найден
+    Reg -> Verify : Запрашивание SMS с кодом
+    activate Verify
+    Verify --> Reg : SMS отправлен
+    deactivate Verify
+    Reg --> Gateway : 200 OK
+    Gateway --> UI : SMS отправлен
+    UI --> User : Отобразить поле для ввода кода
+
+else Телефон уже зарегистрирован
+    Reg --> Gateway : Вернуть статус ошибки
+    Gateway --> UI : Вернуть статус ошибки
+    UI --> User : Отобразить ошибку
+end
+
+deactivate Reg
+deactivate Gateway
+deactivate UI
+
+== Step 3: Ввод кода подтверждения ==
+User -> UI : Ввод кода подтверждения
+activate UI
+UI -> Gateway : Запрос на проверку кода
+activate Gateway
+Gateway -> Reg : Проверка кода
+activate Reg
+
+== Step 4: Проверка кода ==
+Reg -> Verify : Проверка кода
+activate Verify
+Verify --> Reg : Результат проверки кода
+deactivate Verify
+
+alt Код верный
+    == Step 5: Создание пользователя ==
+    Reg -> IdP : Создать пользователя
+    activate IdP
+    IdP -> UserDB : INSERT INTO user
+    activate UserDB
+    UserDB --> IdP : Пользователь создан
+    deactivate UserDB
+    IdP --> Reg : Пользователь создан
+    deactivate IdP
+
+    == Step 6: Выдача токена ==
+    Reg -> Token : Сгенерировать токены
+    activate Token
+    Token --> Reg : Выдать токены
+    deactivate Token
+    Reg --> Gateway : 200 OK
+
+else Код неверный
+    Reg --> Gateway : Статус ошибки
+end
+
+deactivate Reg
+
+== Step 7: Возврат ответа ==
+Gateway --> UI : Вернуть результат
+deactivate Gateway
+UI --> User : Отобразить результат
+deactivate UI
+
+@enduml

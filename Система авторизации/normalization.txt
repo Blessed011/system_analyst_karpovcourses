@@ -1,0 +1,55 @@
+Выделяем следующие функциональные зависимости:
+user_id - name, email, status, role_name
+token - user_id, device_name, issued_at, expires_at
+role_name - permission_resource, permission_action
+Последняя зависимость является транзитивной: права определяются ролью, а не пользователем или сессией.
+
+Условия 1NF уже выполняются, поскольку все значения атомарны. 
+Для приведения в 2NF и 3NF нужно устранить все частичные и транзитивные зависимости путем разделения таблицы на несколько других.
+
+SQL-скрипт:
+
+create table users (
+ user_id int primary key, 
+ name varchar(50) not null, 
+ email varchar(255) unique, 
+ status varchar(100) not null,
+ role_id int not null,
+ foreign key (role_id) references roles(role_id)
+);
+
+create table sessions (
+ tokens varchar(255) primary key, 
+ user_id int not null,
+ device_id int not null, 
+ issued_at timestamp not null, 
+ expires_at timestamp not null,
+ foreign key (user_id) references users(user_id),
+ foreign key (device_id) references devices(device_id)
+);
+
+create table devices (
+ device_id int primary key, 
+ device_name varchar(255) not null
+);
+
+create table roles (
+ role_id int primary key,
+ role_name varchar(255) not null unique
+);
+
+create table role_permissions (
+ permission_id int primary_key,
+ role_id int not null,
+ permission_resource varchar(100) not null,
+ permission_action varchar(50) not null,
+ foreign key (role_id) references roles(role_id)
+)
+
+В результате нормализации удалось решить следующие проблемы:
+1) устранено дублирование имени, электронной почты и статуса пользователя;
+2) информация о роли хранится только один раз;
+3) права роли больше не повторяются в каждой записи сессии;
+4) изменение роли или её разрешений выполняется в одном месте;
+5) снижается вероятность противоречий при обновлении данных;
+6) база данных становится проще в сопровождении и расширении.

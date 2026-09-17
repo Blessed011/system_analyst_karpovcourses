@@ -1,0 +1,28 @@
+@startuml
+
+title Отметка задачи выполненной, приемка или отклонение
+
+actor "Исполнитель" as user
+participant "CRM WebStyle" as crm
+actor "Менеджер" as manager
+participant "MadeTask API" as api
+
+autonumber
+user -> crm : Загрузить выполненную задачу и отметить статус "Готово"
+crm -> crm : Отметить внутренний статус "На проверке"
+crm -> manager : Уведомить о готовности задачи к проверке
+manager --> crm : Проверить результат работы
+
+alt Работа принята
+crm -> api : POST /tasks/{task_id}/accept
+api --> crm :  200 OK {status: "completed", is_paid: false}
+crm -> crm : Обновить статус на "Принято, ожидает выплаты"
+else Работа отклонена
+crm -> api : POST /tasks/{task_id}/reject
+api --> crm :  200 OK {status: "rejected_by_customer"}
+crm -> user : Задача возвращена на доработку
+else Ошибка: задача уже закрыта или отклонение задачи запрещено
+api --> crm :  403 {code: "task_reject_forbidden"}
+crm -> crm : Залогировать ошибку
+crm --> manager : Показать сообщение об ошибке
+@enduml

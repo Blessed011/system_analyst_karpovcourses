@@ -1,0 +1,209 @@
+openapi: 3.0.3
+info:
+  title: MyAuth
+  version: 1.0.0
+  description: OpenAPI-спецификация для сервиса аутентификации и авторизации
+paths:
+  /auth/register/start:
+    post:
+      summary: Начало регистрации по телефону
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                phone:
+                  type: string
+                  example: '+79001234567'
+      responses:
+        '200':
+          description: Код отправлен
+  /auth/register/verify:
+    post:
+      summary: Подтверждение SMS-кода
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - phone
+              - code
+              properties:
+                phone:
+                  type: string
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Пользователь создан, токены выданы
+  /auth/login:
+    post:
+      summary: Вход в систему
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - password
+              properties:
+                phone:
+                  type: string
+                  example: '+79001234567'
+                password:
+                  type: string
+                  format: password
+                  example: "Password123"
+      responses:
+        '200':
+          description: Пользователь вошел в систему
+  /auth/logout:
+    post:
+      summary: Завершает текущую сессию пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Пользователь успешно вышел из системы
+        '401':
+          description: Пользователь не авторизован или токен недействителен
+  /auth/refresh:
+    post:
+      summary: Обновить пары токенов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  example: "bmV3IHJlZnJlc2ggdG9rZW4..."
+      responses:
+        '200':
+          description: Токен успешно обновлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR..."
+                  refresh_token:
+                    type: string
+                    example: "bmV3IHJlZnJlc2ggdG9rZW4..."
+                  expires_in:
+                    type: integer
+                    example: 900
+        '401':
+          description: Refresh-токен недействителен или просрочен
+  /auth/sessions:
+    get:
+      summary: Получение активных сессий пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Список активных сессий получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/session'
+        '401':
+          description: Токен аутентификации неверный или отсутствует
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Unauthorized access"
+  /auth/profile:
+    get:
+      summary: Получение профиля пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  phone:
+                    type: string
+                    example: "+79001234567"
+                  name:
+                    type: string
+                    example: "Иван Иванов"
+  /auth/sessions/{session_id}:
+    delete:
+      summary: Завершение сессии пользователя 
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: No content
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    session:
+      type: object
+      properties:
+        sessoion_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        device_name:
+          type: string
+          example: "Chrome on macOS"
+        ip_address:
+          type: string
+          format: ipv4
+          example: "192.168.1.1"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-07-30T12:00:00Z"
+        expires_at:
+          type: string
+          format: date-time
+          example: "2026-08-30T12:00:00Z"
+        is_current:
+          type: boolean
+          description: Indicates if this session belongs to the current API request token.
+          example: true
+      required:
+        - id
+        - device_name
+        - created_at
+        - expires_at

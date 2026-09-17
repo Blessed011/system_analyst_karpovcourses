@@ -1,0 +1,103 @@
+Table users {
+  user_id int [pk, increment]
+  name varchar(50) [not null]
+  phone varchar(20) [not null, unique]
+  email varchar(255) [unique]
+  status varchar(20) [not null, default: 'active']
+  created_at timestamp [not null]
+}
+
+Table sessions {
+  session_id uuid [pk]
+  user_id int [not null]
+  device_id int [not null]
+  ip_address varchar(45) [not null]
+  created_at timestamp [not null]
+  last_activity_at timestamp [not null]
+  expires_at timestamp [not null]
+  revoked_at timestamp
+  status varchar(20) [not null, default: 'active']
+}
+
+Table devices {
+  device_id int [pk, increment]
+  user_id int [not null]
+  device_name varchar(100)
+  device_type varchar(30) [not null]
+  os varchar(50)
+  browser varchar(100)
+  first_seen_at timestamp [not null]
+  last_seen_at timestamp [not null]
+}
+
+Table roles {
+  role_id int [pk, increment]
+  role_name varchar(50) [not null, unique]
+  description varchar(255)
+  created_at timestamp [not null]
+}
+
+Table user_roles {
+  user_id int [not null]
+  role_id int [not null]
+  assigned_at timestamp [not null]
+
+  indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+Table permissions {
+  permission_id int [pk, increment]
+  permission_name varchar(100) [not null, unique]
+  description varchar(255)
+}
+
+Table role_permissions {
+  role_id int [not null]
+  permission_id int [not null]
+
+  indexes {
+    (role_id, permission_id) [pk]
+  }
+}
+
+Table auth_logs {
+  log_id int [pk, increment]
+  user_id int [not null]
+  session_id uuid [not null]
+  event_type varchar(50) [not null]
+  ip_address varchar(45)
+  success boolean [not null]
+  event_time timestamp [not null]
+  details varchar(1000)
+}
+
+Table user_credentials {
+  credential_id int [pk, increment]
+  user_id int [not null, unique]
+  password_hash varchar(255) [not null]
+  password_updated_at timestamp [not null]
+  failed_login_attempts int [not null, default: 0]
+  locked_until timestamp
+}
+
+Ref: users.user_id - user_credentials.user_id
+
+Ref: users.user_id < devices.user_id
+
+Ref: users.user_id < sessions.user_id
+
+Ref: devices.device_id < sessions.device_id
+
+Ref: users.user_id < user_roles.user_id
+
+Ref: roles.role_id < user_roles.role_id
+
+Ref: roles.role_id < role_permissions.role_id
+
+Ref: permissions.permission_id < role_permissions.permission_id
+
+Ref: users.user_id < auth_logs.user_id
+
+Ref: sessions.session_id < auth_logs.session_id

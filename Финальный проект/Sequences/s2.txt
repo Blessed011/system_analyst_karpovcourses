@@ -1,0 +1,27 @@
+@startuml
+
+title Создание задачи в CRM и MadeTask
+
+actor "Менеджер" as manager
+participant "CRM WebStyle" as crm
+participant "MadeTask API" as api
+
+autonumber
+manager -> crm : Создать задачу (название, описание, дедлайн, стоимость, услуга, исполнитель)
+crm -> crm : Локально сохранить задачу
+crm -> crm : Определить service_id и category_id по локальному кешу справочников (/dict/service, /dict/category)
+
+alt Исполнитель верифицирован (kyc_state = LVL_ONE_DONE)
+crm -> api : POST /v2/tasks {name, description, expired_at, cost, currency, contractor_id, category_id, service_id, external_id}
+api --> crm : 200 OK {все параметры}
+crm -> crm : Сохранить id задачи в таблице соответствия по external_id
+crm --> manager : Задача создана и передана в MadeTask
+else Исполнитель еще не верифицирован
+crm --> manager : Задача создана и ожидает верификации исполнителя
+note over crm, api
+Создание задачи в MadeTask будет выполнено после верификации исполнителя (см. сценарий 1)
+end note
+else Ошибка при создании задачи
+api --> crm : 400 {например, code: "task_wrong_attribute"}
+crm --> manager : Показать ошибку
+@enduml

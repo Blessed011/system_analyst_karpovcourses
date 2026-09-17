@@ -1,0 +1,30 @@
+@startuml
+
+title Выплата по принятой задаче
+
+
+participant "CRM WebStyle" as crm
+participant "MadeTask API" as api
+actor "Бухгалтер" as accountant
+actor "Исполнитель" as user
+
+autonumber
+note over crm
+Запускается сразу после /tasks/{task_id}/accept (из сценария 3)
+end note
+crm -> api : GET /payout/requisites/bank_card/contractors/{contractor_id}
+api --> crm : 200 OK {requisites_id, wallet_number}
+crm -> api : POST /payout/bank_card/create {contractor_id, requisites_id, task_id, amount, currency}
+api --> crm : 200 OK {id: payout_id, status: "processing", transaction_id}
+crm -> crm : Сохранить payout_id и статус
+
+loop Периодический опрос статуса (polling)
+crm -> api : GET /payout/{payout_id}
+api --> crm : 200 OK {status: "processing"}
+end loop
+
+api --> crm : 200 OK {status: "completed", amount_result, completed_at}
+crm -> crm : Зафиксировать выплату и обновить финансовый статус
+crm --> accountant : Уведомить об обновлении финансового статуса
+crm --> user : Уведомить о произведении выплаты
+@enduml

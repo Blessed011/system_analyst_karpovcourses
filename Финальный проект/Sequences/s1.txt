@@ -1,0 +1,36 @@
+@startuml
+
+title Создание исполнителя, KYC-верификация и привязка карты
+
+actor "Менеджер" as manager
+participant "CRM WebStyle" as crm
+participant "MadeTask API" as api
+actor "Внешний исполнитель" as external
+
+autonumber
+manager -> crm : Ввести данные исполнителя (ФИО, email, телефон, страна, специализация)
+crm -> api : POST /contractors/create
+api --> crm : 200 OK {id, email}
+crm -> api : GET /contractors/{contractor_id}
+api --> crm : {kyc_state: MISSING, kyc_link_level_one, kyc_link_level_two}
+crm -> external : Отправить персональную ссылку верификации
+external -> api : Перейти по ссылке, загрузить документы
+
+loop Периодический опрос статуса (polling)
+   crm -> api : GET /contractors/{contractor_id}
+   api --> crm : kyc_state: LVL_ONE_PENDING
+end
+
+api --> crm : kyc_state: LVL_ONE_DONE
+crm -> crm : Обновить статус исполнителя (верифицирован)
+crm -> api : POST /widget_capture_card_data/create
+api --> crm : {url, secret} - конечная точка виджета токенизации карты
+crm -> external : Отправить ссылку с виджетом ввода карты
+external -> api: Ввод реквизитов в виджете
+api --> external : {reference, token}
+external --> crm : Передать референс и токен
+crm -> api: POST /payout/requisites/bank_card/token/create {contractor_id, reference, token}
+api --> crm : 200 OK {id, wallet_number, contractor.id, contractor.email}
+crm -> crm : Обновить статус исполнителя (верифицирован, счет привязан)
+crm --> manager : Исполнитель готов к получению задач
+@enduml
